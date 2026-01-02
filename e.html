@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Escape from Mom</title>
+<style>
+  body { margin: 0; background: #222; overflow: hidden; }
+  canvas { display: block; margin: auto; background: #eee; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+
+<audio id="normalMusic" loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
+<audio id="bossMusic" loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"></audio>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const player = { x: 50, y: 350, width: 30, height: 50, color: 'blue', vx: 0, vy: 0, speed: 4, jumpPower: 12, grounded: false };
+const mom = { x: 700, y: 350, width: 30, height: 50, color: 'red', speed: 2 };
+const gravity = 0.6;
+const floorY = 380;
+let bossMode = false;
+let gameOver = false;
+let gameWin = false;
+
+const meat = { x: 400, y: 350, width: 20, height: 20, color: 'brown' };
+const exit = { x: 750, y: 350, width: 40, height: 50, color: 'green' };
+
+const keys = {};
+
+document.addEventListener('keydown', e => keys[e.code] = true);
+document.addEventListener('keyup', e => keys[e.code] = false);
+
+const normalMusic = document.getElementById('normalMusic');
+const bossMusic = document.getElementById('bossMusic');
+normalMusic.volume = 0.3;
+bossMusic.volume = 0.3;
+normalMusic.play();
+
+function rectsCollide(a, b) {
+  return a.x < b.x + b.width &&
+         a.x + a.width > b.x &&
+         a.y < b.y + b.height &&
+         a.y + a.height > b.y;
+}
+
+function update() {
+  if (gameOver || gameWin) return;
+
+  // Player movement
+  player.vx = 0;
+  if (keys['ArrowLeft']) player.vx = -player.speed;
+  if (keys['ArrowRight']) player.vx = player.speed;
+  if (keys['ArrowUp'] && player.grounded) {
+    player.vy = -player.jumpPower;
+    player.grounded = false;
+  }
+
+  player.vy += gravity;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  // Floor collision
+  if (player.y + player.height > floorY) {
+    player.y = floorY - player.height;
+    player.vy = 0;
+    player.grounded = true;
+  }
+
+  // Meat collision triggers boss mode
+  if (!bossMode && rectsCollide(player, meat)) {
+    bossMode = true;
+    normalMusic.pause();
+    bossMusic.play();
+    mom.speed = 5;
+  }
+
+  // Mom AI: chase player in boss mode
+  if (bossMode) {
+    if (mom.x < player.x) mom.x += mom.speed;
+    if (mom.x > player.x) mom.x -= mom.speed;
+    if (mom.y < player.y) mom.y += mom.speed;
+    if (mom.y > player.y) mom.y -= mom.speed;
+  }
+
+  // Check collisions
+  if (rectsCollide(player, mom)) gameOver = true;
+  if (rectsCollide(player, exit)) gameWin = true;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw floor
+  ctx.fillStyle = '#888';
+  ctx.fillRect(0, floorY, canvas.width, canvas.height - floorY);
+
+  // Draw player
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+
+  // Draw mom
+  ctx.fillStyle = mom.color;
+  ctx.fillRect(mom.x, mom.y, mom.width, mom.height);
+
+  // Draw meat
+  if (!bossMode) {
+    ctx.fillStyle = meat.color;
+    ctx.fillRect(meat.x, meat.y, meat.width, meat.height);
+  }
+
+  // Draw exit
+  ctx.fillStyle = exit.color;
+  ctx.fillRect(exit.x, exit.y, exit.width, exit.height);
+
+  // Messages
+  if (gameOver) {
+    ctx.fillStyle = 'black';
+    ctx.font = '40px Arial';
+    ctx.fillText('Caught by Mom! 😱', 250, 200);
+  }
+  if (gameWin) {
+    ctx.fillStyle = 'black';
+    ctx.font = '40px Arial';
+    ctx.fillText('You Escaped! 🎉', 270, 200);
+  }
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
